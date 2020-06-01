@@ -165,16 +165,12 @@ def find_speaker(useable_text, listed_about, sentence_about, intro, rules):
     used_text = [*listed_about, *sentence_about, *intro]
     person_list  = [get_qphrases_text(rules, w) for w in ulist]
     person_list  = pd.unique(list(chain.from_iterable(person_list)))
-    utext = useable_text.split('\n')
-    available_text = symmetric_difference(utext, used_text)
-    #speaker_chunk = symmetric_same(available_text, person_list)
+    available_text = symmetric_difference(used_text, ulist)
     speaker_chunk = []
     for a in available_text:
         if any(str(p) in a for p in person_list):
             speaker_chunk.append(a)
-    sp_idxs = [ulist.index(s) for s in speaker_chunk]
-    sc = [x for _, x in sorted(zip(sp_idxs, person_list) )] 
-    sc = [s for s in sc if not detect_mech(s, exclude_rules)]
+    sc = [s for s in speaker_chunk if not detect_mech(s, exclude_rules)]
     
     return sc
 
@@ -186,13 +182,20 @@ def detect_mech(text, ex_rules):
         if ddoc_ents == r:
             return True  
 
-def extract_sections(text):
-    ela = extract_listed_about(text, rules=what_rules2)
-    est = extract_sentence_about(text, ela, rules=what_rules2)
-    intro = extract_introduction(text, ela, est)
-    spkr = find_speaker(text, ela, est, intro, who_rules)
+def extract_sections(input_text):
+    ela = extract_listed_about(input_text, rules=what_rules2)
+    est = extract_sentence_about(input_text, ela, rules=what_rules2)
+    intro = extract_introduction(input_text, ela, est)
+    spkr = find_speaker(input_text, ela, est, intro, who_rules)
+
+    l_list = ela.split('\n') if len(ela) != 0 else ''
+    split_text = input_text.split('\n')
+    ela = find_indexed_text(input_text, l_list)
+    intro = find_indexed_text(input_text, intro)
+    est = find_indexed_text(input_text, est)
+    speaker = find_indexed_text(input_text, spkr)
     
-    return intro, est, ela, spkr
+    return intro, est, ela, speaker
 
 def extract_relevant_chunk(about_text_sentences):
     ats = about_text_sentences.split('\n')
@@ -210,3 +213,11 @@ def find_sim(a, b):
     nlpa = nlp(str(a))
     nlpb = nlp(str(b))
     return(nlpa.similarity(nlpb))
+
+def find_indexed_text(in_text, listed_found):
+    if len(listed_found) == 0:
+        return ''
+    split_text = in_text.split('\n')
+    idxs = [split_text.index(x) for x in listed_found]
+    
+    return split_text[min(idxs):max(idxs)+1]
